@@ -5,7 +5,7 @@ The whole thing, end to end (Steps 1 -> 4).
 
     python pipeline.py --user u1 --text "I'm looking for running shoes under Rs 5000"
 
-Step 1  parse the sentence            (Claude API, or regex fallback)
+Step 1  parse the sentence            (rule-based parser; optional Claude API)
 Step 2  retrieve ~25 candidate ads    (embeddings + FAISS)
 Step 3  build the feature table       (personalised to the user)
 Step 4  rank with the LightGBM model  (sort by predicted click prob)

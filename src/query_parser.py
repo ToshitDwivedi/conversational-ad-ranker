@@ -4,9 +4,9 @@ Step 1 - Turn a spoken sentence into a structured search query.
     "I'm looking for running shoes under Rs 5000"
         -> {"category": "running_shoes", "budget": 5000}
 
-Primary path : one Claude API call (set ANTHROPIC_API_KEY to enable).
-Fallback path: a deterministic regex/keyword parser so the whole pipeline
-               still runs fully offline with zero credentials.
+Default path : a deterministic regex/keyword parser -- no credentials, fully
+               offline, and what every reported result was produced with.
+Optional path: one Claude API call, used only when ANTHROPIC_API_KEY is set.
 """
 
 import os

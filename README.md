@@ -16,38 +16,31 @@ Runs fully offline with graceful fallbacks (no API key or GPU required).
 ## Architecture
 
 ```
-             Natural-language query ("running shoes under ₹5000")  +  user_id
-                                        │
-                    ┌───────────────────▼────────────────────┐
-             Step 1 │  Intent parsing  → {category, budget}   │  Claude API (regex fallback)
-                    └───────────────────┬────────────────────┘
-                                        │
-                    ┌───────────────────▼────────────────────┐
-             Step 2 │  Candidate retrieval  (~150 → ~25 ads)  │  embeddings + FAISS
-                    └───────────────────┬────────────────────┘
-                                        │
-                    ┌───────────────────▼────────────────────┐
-             Step 3 │  Feature engineering  (per candidate)   │  similarity · category-match
-                    │  semantic_sim, category_match,          │  · price-fit · user history
-                    │  price_fit, user_cat_clicks             │
-                    └───────────────────┬────────────────────┘
-                                        │
-                    ┌───────────────────▼────────────────────┐
-             Step 4 │  Learning-to-Rank  (CTR prediction)     │  LightGBM
-                    └───────────────────┬────────────────────┘
-                                        │
-                                 Personalized ranked ads
-                                        │
-                    ┌───────────────────▼────────────────────┐
-           Step 5-6 │  Evaluation: NDCG@10 / Precision@10     │  offline metrics
-                    │  + simulated A/B test (z-test on CTR)   │  + public benchmark (MovieLens)
-                    └─────────────────────────────────────────┘
+   Natural-language query:  "running shoes under ₹5000"   +   user_id
+        │
+        ▼
+   [ Step 1 ]  Intent parsing       ->  {category, budget}          --  rule-based parser (Claude optional)
+        │
+        ▼
+   [ Step 2 ]  Candidate retrieval  ->  ~150 ads narrowed to ~25    --  embeddings + FAISS
+        │
+        ▼
+   [ Step 3 ]  Feature engineering  ->  semantic_sim, category_match, price_fit, user_cat_clicks
+        │
+        ▼
+   [ Step 4 ]  Learning-to-Rank     ->  sort by predicted CTR       --  LightGBM
+        │
+        ▼
+              Personalized ranked ads
+        │
+        ▼
+   [ Step 5-6 ]  Evaluation  ->  NDCG@10 / Precision@10 + simulated A/B (z-test)   --  + MovieLens benchmark
 ```
 
 | Step | What happens | Code |
 |------|--------------|------|
 | 0 | Build a fake world: 150 ads, 80 users, ~4.2k click events with a **baked-in behavioural signal** | [data/generate_data.py](data/generate_data.py) |
-| 1 | Parse the sentence → `{category, budget}` (Claude API, regex fallback) | [src/query_parser.py](src/query_parser.py) |
+| 1 | Parse the sentence → `{category, budget}` (rule-based parser; optional Claude API) | [src/query_parser.py](src/query_parser.py) |
 | 2 | Retrieve ~25 candidate ads (embeddings + FAISS), scoped to the requested intent | [src/retrieval.py](src/retrieval.py) |
 | 3 | Build per-candidate features: `semantic_sim, category_match, price_fit, user_cat_clicks` | [src/features.py](src/features.py) |
 | 4 | Rank by predicted click probability with a trained **LightGBM** model | [src/ranker.py](src/ranker.py) |
@@ -72,12 +65,6 @@ Filtering* (He et al., WWW 2017). Full details in [benchmark/RESULTS.md](benchma
 
 → **+8.0% NDCG@10** over the popularity baseline; `genre_affinity`
 (personalization) is the model's #2 feature after popularity.
-
-This trains the project's own ranker (`src.ranker.train_lambdarank`) — not a
-separate re-implementation. It validates the **ranking** claim on data nobody
-invented; it does not exercise Steps 1-2, because no public dataset pairs
-natural-language shopping queries with priced ads. That gap is exactly why
-`data/` is synthetic: it's the only way to demo the conversational half.
 
 ### 2 · Conversational ad pipeline — controlled synthetic data
 
@@ -156,8 +143,9 @@ notebook.ipynb  walkthrough of Steps 1-6
   explicitly (`EMBED_BACKEND`), not auto-detected, so the numbers above don't
   silently change based on what happens to be installed. Opt into MiniLM with
   `pip install -r requirements-optional.txt && EMBED_BACKEND=sentence-transformers`.
-  Step 1 uses Claude when `ANTHROPIC_API_KEY` is set and a deterministic regex
-  parser otherwise; retrieval falls back to NumPy cosine if FAISS is absent.
+  Step 1 parses intent with a **deterministic rule-based parser by default**
+  (this is what every reported run used); setting `ANTHROPIC_API_KEY` swaps in a
+  Claude call instead. Retrieval falls back to NumPy cosine if FAISS is absent.
 - **Graded retrieval back-off:** filters try `category + budget` → `category`
   → pure semantic, so an over-tight query (*"headphones under ₹8000"* when few
   qualify) still returns on-intent ads instead of a random mixed bag.

@@ -1,0 +1,12 @@
+# Core dependencies -- everything in the README reproduces with just these.
+pandas
+numpy
+scikit-learn
+scipy
+lightgbm
+faiss-cpu
+
+# Optional extras live in requirements-optional.txt (see the README):
+#   anthropic              -> Step 1 parses queries with Claude instead of regex
+#   sentence-transformers  -> Step 2 uses MiniLM embeddings instead of TF-IDF
+# Both are opt-in: the pipeline auto-detects them and falls back cleanly.

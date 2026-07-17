@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+.ipynb_checkpoints/
+
+# auto-downloaded public dataset (fetched on first benchmark run)
+benchmark/ml-100k/

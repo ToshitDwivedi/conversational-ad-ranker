@@ -1,0 +1,10 @@
+# Optional upgrades -- NOT needed to reproduce the README results.
+#   pip install -r requirements-optional.txt
+#
+# anthropic: Step 1 parses the query with Claude (needs ANTHROPIC_API_KEY).
+#            Without it, a deterministic regex parser is used.
+# sentence-transformers: Step 2 embeds ads with MiniLM instead of TF-IDF.
+#            Pulls in torch (~2 GB) and changes retrieval scores, so the
+#            reported numbers were produced with the TF-IDF default.
+anthropic
+sentence-transformers
